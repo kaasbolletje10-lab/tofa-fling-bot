@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 
--- Pull settings from _G (set by loader)
+-- Get settings from _G
 local HOST_USERNAME = _G.HOST_USERNAME or "YourMainAccountHere"
 local OFFSET_RIGHT = _G.OFFSET_RIGHT or 2
 local OFFSET_UP = _G.OFFSET_UP or 3
@@ -33,15 +33,12 @@ end
 -- WHITELIST TABLE
 local whitelistedUsers = {}
 
--- CURRENT CONTROLLER
+-- CURRENT CONTROLLER (who the stand is following)
 local currentController = host
 
 -- FLOATING ANIMATION
 local floatOffset = 0
 local floatSpeed = 2
-
--- POSE WELDS
-local poseWelds = {}
 
 local function createUI(text)
 	local playerGui = stand:WaitForChild("PlayerGui")
@@ -104,152 +101,217 @@ local function sendToSky()
 	end
 end
 
+-- Apply snow angel pose using Humanoid properties (visible to all players)
 local function applyPose()
 	if not stand.Character then return end
-	for _, weld in pairs(poseWelds) do
-		if weld then weld:Destroy() end
+	
+	local humanoid = stand.Character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	
+	-- Disable default animations
+	for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+		track:Stop()
 	end
-	poseWelds = {}
-	local torso = stand.Character:FindFirstChild("Torso") or stand.Character:FindFirstChild("UpperTorso")
-	if not torso then return end
+	
+	-- Create custom animator pose
+	local animateScript = stand.Character:FindFirstChild("Animate")
+	if animateScript then
+		animateScript.Disabled = true
+	end
+	
+	-- R6 Character
+	if stand.Character:FindFirstChild("Torso") then
+		local torso = stand.Character.Torso
+		local leftShoulder = torso:FindFirstChild("Left Shoulder")
+		local rightShoulder = torso:FindFirstChild("Right Shoulder")
+		local leftHip = torso:FindFirstChild("Left Hip")
+		local rightHip = torso:FindFirstChild("Right Hip")
+		
+		if leftShoulder then
+			leftShoulder.C0 = CFrame.new(-1, 0.5, 0) * CFrame.Angles(math.rad(0), math.rad(-90), math.rad(-70))
+		end
+		
+		if rightShoulder then
+			rightShoulder.C0 = CFrame.new(1, 0.5, 0) * CFrame.Angles(math.rad(0), math.rad(90), math.rad(70))
+		end
+		
+		if leftHip then
+			leftHip.C0 = CFrame.new(-1, -1, 0) * CFrame.Angles(math.rad(0), math.rad(-90), math.rad(-20))
+		end
+		
+		if rightHip then
+			rightHip.C0 = CFrame.new(1, -1, 0) * CFrame.Angles(math.rad(0), math.rad(90), math.rad(20))
+		end
+	-- R15 Character
+	else
+		local torso = stand.Character:FindFirstChild("UpperTorso")
+		if not torso then return end
+		
+		local leftShoulder = torso:FindFirstChild("LeftShoulder")
+		local rightShoulder = torso:FindFirstChild("RightShoulder")
+		local waist = torso:FindFirstChild("Waist")
+		
+		local lowerTorso = stand.Character:FindFirstChild("LowerTorso")
+		local leftHip = lowerTorso and lowerTorso:FindFirstChild("LeftHip")
+		local rightHip = lowerTorso and lowerTorso:FindFirstChild("RightHip")
+		
+		if leftShoulder then
+			leftShoulder.C0 = CFrame.new(-1, 0.5, 0) * CFrame.Angles(math.rad(0), math.rad(-90), math.rad(-70))
+		end
+		
+		if rightShoulder then
+			rightShoulder.C0 = CFrame.new(1, 0.5, 0) * CFrame.Angles(math.rad(0), math.rad(90), math.rad(70))
+		end
+		
+		if leftHip then
+			leftHip.C0 = CFrame.new(-1, -1, 0) * CFrame.Angles(math.rad(0), math.rad(-90), math.rad(-20))
+		end
+		
+		if rightHip then
+			rightHip.C0 = CFrame.new(1, -1, 0) * CFrame.Angles(math.rad(0), math.rad(90), math.rad(20))
+		end
+	end
+end
+
+-- Remove pose and restore defaults
+local function removePose()
+	if not stand.Character then return end
+	
 	local humanoid = stand.Character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
-		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 	end
+	
+	-- Re-enable animations
+	local animateScript = stand.Character:FindFirstChild("Animate")
+	if animateScript then
+		animateScript.Disabled = false
+	end
+	
+	-- Reset joints to default
 	if stand.Character:FindFirstChild("Torso") then
-		local leftArm = stand.Character:FindFirstChild("Left Arm")
-		local rightArm = stand.Character:FindFirstChild("Right Arm")
-		local leftLeg = stand.Character:FindFirstChild("Left Leg")
-		local rightLeg = stand.Character:FindFirstChild("Right Leg")
-		if leftArm then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = leftArm
-			weld.C0 = CFrame.new(-1.5, 0.5, 0) * CFrame.Angles(math.rad(90), math.rad(0), math.rad(-45))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
+		local torso = stand.Character.Torso
+		local leftShoulder = torso:FindFirstChild("Left Shoulder")
+		local rightShoulder = torso:FindFirstChild("Right Shoulder")
+		local leftHip = torso:FindFirstChild("Left Hip")
+		local rightHip = torso:FindFirstChild("Right Hip")
+		
+		if leftShoulder then
+			leftShoulder.C0 = CFrame.new(-1, 0.5, 0) * CFrame.Angles(0, math.rad(-90), 0)
 		end
-		if rightArm then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = rightArm
-			weld.C0 = CFrame.new(1.5, 0.5, 0) * CFrame.Angles(math.rad(90), math.rad(0), math.rad(45))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
+		
+		if rightShoulder then
+			rightShoulder.C0 = CFrame.new(1, 0.5, 0) * CFrame.Angles(0, math.rad(90), 0)
 		end
-		if leftLeg then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = leftLeg
-			weld.C0 = CFrame.new(-0.5, -2, 0) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-10))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
+		
+		if leftHip then
+			leftHip.C0 = CFrame.new(-1, -1, 0) * CFrame.Angles(0, math.rad(-90), 0)
 		end
-		if rightLeg then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = rightLeg
-			weld.C0 = CFrame.new(0.5, -2, 0) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(10))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
+		
+		if rightHip then
+			rightHip.C0 = CFrame.new(1, -1, 0) * CFrame.Angles(0, math.rad(90), 0)
 		end
 	else
-		local leftUpperArm = stand.Character:FindFirstChild("LeftUpperArm")
-		local rightUpperArm = stand.Character:FindFirstChild("RightUpperArm")
-		local leftUpperLeg = stand.Character:FindFirstChild("LeftUpperLeg")
-		local rightUpperLeg = stand.Character:FindFirstChild("RightUpperLeg")
-		if leftUpperArm then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = leftUpperArm
-			weld.C0 = CFrame.new(-1.5, 0.5, 0) * CFrame.Angles(math.rad(90), math.rad(0), math.rad(-45))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
+		local torso = stand.Character:FindFirstChild("UpperTorso")
+		if torso then
+			local leftShoulder = torso:FindFirstChild("LeftShoulder")
+			local rightShoulder = torso:FindFirstChild("RightShoulder")
+			
+			if leftShoulder then
+				leftShoulder.C0 = CFrame.new(-1, 0.5, 0) * CFrame.Angles(0, math.rad(-90), 0)
+			end
+			
+			if rightShoulder then
+				rightShoulder.C0 = CFrame.new(1, 0.5, 0) * CFrame.Angles(0, math.rad(90), 0)
+			end
 		end
-		if rightUpperArm then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = rightUpperArm
-			weld.C0 = CFrame.new(1.5, 0.5, 0) * CFrame.Angles(math.rad(90), math.rad(0), math.rad(45))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
-		end
-		if leftUpperLeg then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = leftUpperLeg
-			weld.C0 = CFrame.new(-0.5, -1, 0) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(-10))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
-		end
-		if rightUpperLeg then
-			local weld = Instance.new("Weld")
-			weld.Part0 = torso
-			weld.Part1 = rightUpperLeg
-			weld.C0 = CFrame.new(0.5, -1, 0) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(10))
-			weld.Parent = torso
-			table.insert(poseWelds, weld)
+		
+		local lowerTorso = stand.Character:FindFirstChild("LowerTorso")
+		if lowerTorso then
+			local leftHip = lowerTorso:FindFirstChild("LeftHip")
+			local rightHip = lowerTorso:FindFirstChild("RightHip")
+			
+			if leftHip then
+				leftHip.C0 = CFrame.new(-1, -1, 0) * CFrame.Angles(0, math.rad(-90), 0)
+			end
+			
+			if rightHip then
+				rightHip.C0 = CFrame.new(1, -1, 0) * CFrame.Angles(0, math.rad(90), 0)
+			end
 		end
 	end
 end
 
-local function removePose()
-	for _, weld in pairs(poseWelds) do
-		if weld then weld:Destroy() end
-	end
-	poseWelds = {}
-	if stand.Character then
-		local humanoid = stand.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-		end
-	end
-end
-
+-- Check if player is authorized (host or whitelisted)
 local function isAuthorized(player)
 	if player == host then return true end
 	return whitelistedUsers[player.Name] ~= nil
 end
 
+-- Universal player finder (checks display name first, then username, both partial and exact)
 local function findPlayer(query)
 	query = query:lower()
+	local target = nil
+	
+	-- Pass 1: Exact display name match
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr.DisplayName:lower() == query then return plr end
+		if plr.DisplayName:lower() == query then
+			return plr
+		end
 	end
+	
+	-- Pass 2: Partial display name match (starts with)
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if string.sub(plr.DisplayName:lower(), 1, #query) == query then return plr end
+		if string.sub(plr.DisplayName:lower(), 1, #query) == query then
+			return plr
+		end
 	end
+	
+	-- Pass 3: Exact username match
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr.Name:lower() == query then return plr end
+		if plr.Name:lower() == query then
+			return plr
+		end
 	end
+	
+	-- Pass 4: Partial username match (starts with)
 	for _, plr in ipairs(Players:GetPlayers()) do
-		if string.sub(plr.Name:lower(), 1, #query) == query then return plr end
+		if string.sub(plr.Name:lower(), 1, #query) == query then
+			return plr
+		end
 	end
+	
 	return nil
 end
 
+-- SKID FLING FUNCTION
 local function SkidFling(TargetPlayer)
 	local Character = stand.Character
 	local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
 	local RootPart = Humanoid and Humanoid.RootPart
 	local TCharacter = TargetPlayer.Character
 	if not TCharacter then return end
+
 	local THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
 	local TRootPart = THumanoid and THumanoid.RootPart
 	local THead = TCharacter:FindFirstChild("Head")
 	local Accessory = TCharacter:FindFirstChildOfClass("Accessory")
 	local Handle = Accessory and Accessory:FindFirstChild("Handle")
+
 	if not (Character and Humanoid and RootPart) then
 		createUI("Fling: Stand not ready")
 		return
 	end
+
 	if RootPart.Velocity.Magnitude < 50 then
 		getgenv().OldPos = RootPart.CFrame
 	end
+
 	if THumanoid and THumanoid.Sit then
 		createUI("Fling: Target is sitting")
 		return
 	end
+
 	if THead then
 		workspace.CurrentCamera.CameraSubject = THead
 	elseif Handle then
@@ -257,13 +319,16 @@ local function SkidFling(TargetPlayer)
 	elseif THumanoid then
 		workspace.CurrentCamera.CameraSubject = THumanoid
 	end
+
 	if not TCharacter:FindFirstChildWhichIsA("BasePart") then return end
+
 	local function FPos(BasePart, Pos, Ang)
 		RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
 		Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
 		RootPart.Velocity = Vector3.new(9e7, 9e7 * 10, 9e7)
 		RootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
 	end
+
 	local function SFBasePart(BasePart)
 		local TimeToWait = 2
 		local Time = tick()
@@ -303,12 +368,16 @@ local function SkidFling(TargetPlayer)
 			end
 		until Time + TimeToWait < tick() or not isFlinging
 	end
+
 	workspace.FallenPartsDestroyHeight = 0/0
+
 	local BV = Instance.new("BodyVelocity")
 	BV.Parent = RootPart
 	BV.Velocity = Vector3.new(0, 0, 0)
 	BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
 	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
 	if TRootPart then
 		SFBasePart(TRootPart)
 	elseif THead then
@@ -318,9 +387,11 @@ local function SkidFling(TargetPlayer)
 	else
 		createUI("Fling: No valid parts")
 	end
+
 	BV:Destroy()
 	Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
 	workspace.CurrentCamera.CameraSubject = Humanoid
+
 	if getgenv().OldPos then
 		repeat
 			RootPart.CFrame = getgenv().OldPos * CFrame.new(0, 0.5, 0)
@@ -367,19 +438,27 @@ end
 RunService.Heartbeat:Connect(function(dt)
 	if not stand.Character then return end
 	if not currentController or not currentController.Character then return end
+	
 	local standHRP = stand.Character:FindFirstChild("HumanoidRootPart")
 	local controllerHRP = currentController.Character:FindFirstChild("HumanoidRootPart")
 	if not standHRP or not controllerHRP then return end
+
 	if isFlinging then return end
+
 	if isFrozen then
 		standHRP.AssemblyLinearVelocity = Vector3.zero
 		standHRP.AssemblyAngularVelocity = Vector3.zero
 		return
 	end
+
+	-- Update floating animation
 	floatOffset += floatSpeed * dt
+
+	-- Spinning can happen independently of movement mode
 	if isSpinning then
 		spinAngle += spinSpeed * dt * 60
 	end
+
 	if mode == "follow" then
 		local floatY = math.sin(floatOffset) * 0.5
 		local targetCF =
@@ -424,13 +503,16 @@ RunService.Heartbeat:Connect(function(dt)
 			standHRP.CFrame = spinCF
 		end
 	end
+
 	standHRP.AssemblyLinearVelocity = Vector3.zero
 	standHRP.AssemblyAngularVelocity = Vector3.zero
 end)
 
 -- COMMAND HANDLER
 local function handleCommand(player, msg)
+	-- Only process if authorized
 	if not isAuthorized(player) then return end
+	
 	print("[COMMAND from " .. player.Name .. "]:", msg)
 	local args = string.split(msg, " ")
 	local cmd = args[1]
@@ -674,7 +756,7 @@ host.Chatted:Connect(function(msg)
 	handleCommand(host, msg)
 end)
 
--- Connect all player commands
+-- Connect all player commands (authorization checked inside handler)
 Players.PlayerAdded:Connect(function(player)
 	player.Chatted:Connect(function(msg)
 		handleCommand(player, msg)
