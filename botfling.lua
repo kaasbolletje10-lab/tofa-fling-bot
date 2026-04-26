@@ -33,6 +33,9 @@ end
 -- WHITELIST TABLE
 local whitelistedUsers = {}
 
+-- OPP LIST (auto-fling enemies)
+local oppList = {}
+
 -- CURRENT CONTROLLER (who the stand is following)
 local currentController = host
 
@@ -83,6 +86,7 @@ local isSpinning = false
 local spinSpeed = 5
 local spinAngle = 0
 local isFlinging = false
+local autoFlingEnabled = false
 
 -- DEFAULT VALUES
 local DEFAULT = {
@@ -434,6 +438,27 @@ local function runFling(target)
 	endFling()
 end
 
+-- AUTO FLING LOOP (checks for opp list members)
+task.spawn(function()
+	while task.wait(1) do
+		if autoFlingEnabled and not isFlinging then
+			for playerName, _ in pairs(oppList) do
+				local target = Players:FindFirstChild(playerName)
+				if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+					modeBeforeFling = mode
+					isFlinging = true
+					mode = "idle"
+					isFrozen = false
+					createUI("Auto-Fling: " .. target.DisplayName)
+					runFling(target)
+					task.wait(6) -- Wait for fling to complete + cooldown
+					break
+				end
+			end
+		end
+	end
+end)
+
 -- MAIN LOOP
 RunService.Heartbeat:Connect(function(dt)
 	if not stand.Character then return end
@@ -530,6 +555,7 @@ local function handleCommand(player, msg)
 		isFrozen = false
 		isFlinging = false
 		isSpinning = false
+		autoFlingEnabled = false
 		removePose()
 		sendToSky()
 		createUI("Stand: Stopped\nSent to sky")
@@ -619,6 +645,40 @@ local function handleCommand(player, msg)
 		whitelistedUsers[target.Name] = nil
 		createUI("Removed from whitelist:\n" .. target.DisplayName)
 
+	elseif cmd == ".opp" then
+		local query = table.concat(args, " ", 2)
+		if query == "" then
+			createUI("Usage: .opp <username>")
+			return
+		end
+		local target = findPlayer(query)
+		if not target then
+			createUI("Opp: Player not found\n\"" .. query .. "\"")
+			return
+		end
+		oppList[target.Name] = true
+		autoFlingEnabled = true
+		createUI("Added to Opp List:\n" .. target.DisplayName .. "\nAuto-fling: ON")
+
+	elseif cmd == ".unopp" then
+		local query = table.concat(args, " ", 2)
+		if query == "" then
+			createUI("Usage: .unopp <username>")
+			return
+		end
+		local target = findPlayer(query)
+		if not target then
+			createUI("Unopp: Player not found\n\"" .. query .. "\"")
+			return
+		end
+		oppList[target.Name] = nil
+		local oppCount = 0
+		for _ in pairs(oppList) do oppCount += 1 end
+		if oppCount == 0 then
+			autoFlingEnabled = false
+		end
+		createUI("Removed from Opp List:\n" .. target.DisplayName)
+
 	elseif cmd == ".fling" then
 		if isFlinging then
 			createUI("Fling: Already flinging!")
@@ -696,7 +756,19 @@ local function handleCommand(player, msg)
 		end
 
 	elseif cmd == ".cmd" then
-		stand.Chatted:Fire(".summon | .stop | .void | .idle | .freeze | .orbit [n] | .tp | .behind | .above | .wl [user] | .unwl [user] | .fling [user] | .stopfling | .speed [n] | .spin [n] | .nospin | .invis | .vis | .status | .offset [r] [u] [b] | .reset | .rj | .re")
+		local textChatService = game:GetService("TextChatService")
+		local cmdText = ".summon | .stop | .void | .idle | .freeze | .orbit [n] | .tp | .behind | .above | .wl [user] | .unwl [user] | .opp [user] | .unopp [user] | .fling [user] | .stopfling | .speed [n] | .spin [n] | .nospin | .invis | .vis | .status | .offset [r] [u] [b] | .reset | .rj | .re"
+		
+		if textChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+			-- New TextChatService
+			local channel = textChatService.TextChannels.RBXGeneral
+			if channel then
+				channel:SendAsync(cmdText)
+			end
+		else
+			-- Legacy chat
+			game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(cmdText, "All")
+		end
 		createUI("Command list sent to chat")
 
 	elseif cmd == ".rj" then
@@ -722,9 +794,13 @@ local function handleCommand(player, msg)
 		if isFrozen then statusMsg = statusMsg .. "\nFrozen: Yes" end
 		if isSpinning then statusMsg = statusMsg .. "\nSpinning: " .. spinSpeed end
 		if isFlinging then statusMsg = statusMsg .. "\nFlinging: Active" end
+		if autoFlingEnabled then statusMsg = statusMsg .. "\nAuto-Fling: ON" end
 		local wlCount = 0
 		for _ in pairs(whitelistedUsers) do wlCount += 1 end
 		if wlCount > 0 then statusMsg = statusMsg .. "\nWhitelisted: " .. wlCount end
+		local oppCount = 0
+		for _ in pairs(oppList) do oppCount += 1 end
+		if oppCount > 0 then statusMsg = statusMsg .. "\nOpp List: " .. oppCount end
 		createUI(statusMsg)
 
 	elseif cmd == ".offset" then
@@ -745,6 +821,7 @@ local function handleCommand(player, msg)
 		isFrozen = false
 		isSpinning = false
 		isFlinging = false
+		autoFlingEnabled = false
 		currentController = host
 		removePose()
 		createUI("Stand: Reset to Defaults")
