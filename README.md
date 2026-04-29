@@ -15,4 +15,4 @@ _G.ORBIT_SPEED = 2
 _G.ORBIT_HEIGHT = 3
 
 --yo fuh dont edit this shit
-loadstring(game:HttpGet("https://raw.githubusercontent.com/kaasbolletje10-lab/Glonks-FlingBot/refs/heads/main/botfling.lua)"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/kaasbolletje10-lab/Glonks-FlingBot/refs/heads/main/botfling.lua"))()
