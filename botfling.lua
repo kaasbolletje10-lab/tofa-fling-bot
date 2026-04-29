@@ -66,6 +66,19 @@ local function createUI(text)
 	end)
 end
 
+-- Send message to chat
+local function sendChatMessage(text)
+	local textChatService = game:GetService("TextChatService")
+	if textChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+		local channel = textChatService.TextChannels.RBXGeneral
+		if channel then
+			channel:SendAsync(text)
+		end
+	else
+		game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+	end
+end
+
 if host then
 	createUI("Stand Linked\nHost: " .. host.Name)
 else
@@ -698,6 +711,25 @@ local function handleCommand(player, msg)
 			createUI("Fling: " .. target.DisplayName .. " has no character")
 			return
 		end
+		
+		-- BETRAYAL PROTECTION: Check if whitelisted user is trying to fling the host
+		if player ~= host and target == host then
+			-- 1. Unwhitelist the traitor
+			whitelistedUsers[player.Name] = nil
+			
+			-- 2. Send betrayal message to chat
+			sendChatMessage(player.DisplayName .. " tried to betray the host by flinging them, they got unwhitelisted.")
+			
+			-- 3. Fling the traitor instead
+			modeBeforeFling = mode
+			isFlinging = true
+			mode = "idle"
+			isFrozen = false
+			createUI("BETRAYAL DETECTED!\nFlinging traitor: " .. player.DisplayName)
+			task.spawn(runFling, player)
+			return
+		end
+		
 		modeBeforeFling = mode
 		isFlinging = true
 		mode = "idle"
@@ -756,19 +788,7 @@ local function handleCommand(player, msg)
 		end
 
 	elseif cmd == ".cmd" then
-		local textChatService = game:GetService("TextChatService")
-		local cmdText = ".summon | .stop | .void | .idle | .freeze | .orbit [n] | .tp | .behind | .above | .wl [user] | .unwl [user] | .opp [user] | .unopp [user] | .fling [user] | .stopfling | .speed [n] | .spin [n] | .nospin | .invis | .vis | .status | .offset [r] [u] [b] | .reset | .rj | .re"
-		
-		if textChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-			-- New TextChatService
-			local channel = textChatService.TextChannels.RBXGeneral
-			if channel then
-				channel:SendAsync(cmdText)
-			end
-		else
-			-- Legacy chat
-			game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(cmdText, "All")
-		end
+		sendChatMessage(".summon .stop .orbit [n] .tp .wl [user] .unwl [user] .opp [user] .fling [user] .spin [n] .invis .vis .status .rj .re")
 		createUI("Command list sent to chat")
 
 	elseif cmd == ".rj" then
