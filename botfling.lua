@@ -43,6 +43,70 @@ local currentController = host
 local floatOffset = 0
 local floatSpeed = 2
 
+-- WATERMARK GUI
+local function createWatermark()
+	local playerGui = stand:WaitForChild("PlayerGui")
+	local existing = playerGui:FindFirstChild("FlingBotWatermark")
+	if existing then existing:Destroy() end
+	
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "FlingBotWatermark"
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	
+	-- Main Frame
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(0, 300, 0, 80)
+	frame.Position = UDim2.new(0.5, -150, 0, 10)
+	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	frame.BorderSizePixel = 0
+	frame.Parent = gui
+	
+	-- Corner rounding
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = frame
+	
+	-- Title
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 30)
+	title.Position = UDim2.new(0, 0, 0, 5)
+	title.BackgroundTransparency = 1
+	title.Text = "Glonk's FlingBot"
+	title.TextColor3 = Color3.fromRGB(255, 80, 80)
+	title.Font = Enum.Font.SourceSansBold
+	title.TextSize = 20
+	title.Parent = frame
+	
+	-- Discord Button
+	local discordBtn = Instance.new("TextButton")
+	discordBtn.Size = UDim2.new(0, 260, 0, 35)
+	discordBtn.Position = UDim2.new(0.5, -130, 0, 40)
+	discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+	discordBtn.BorderSizePixel = 0
+	discordBtn.Text = "Click here to copy Discord"
+	discordBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	discordBtn.Font = Enum.Font.SourceSansBold
+	discordBtn.TextSize = 16
+	discordBtn.Parent = frame
+	
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 6)
+	btnCorner.Parent = discordBtn
+	
+	-- Button click handler
+	discordBtn.MouseButton1Click:Connect(function()
+		setclipboard("https://discord.gg/DJuKxGVAck")
+		discordBtn.Text = "Copied!"
+		discordBtn.BackgroundColor3 = Color3.fromRGB(67, 181, 129)
+		task.wait(2)
+		discordBtn.Text = "Click here to copy Discord"
+		discordBtn.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+	end)
+	
+	gui.Parent = playerGui
+end
+
 local function createUI(text)
 	local playerGui = stand:WaitForChild("PlayerGui")
 	local existing = playerGui:FindFirstChild("StandUI")
@@ -81,6 +145,7 @@ end
 
 if host then
 	createUI("Stand Linked\nHost: " .. host.Name)
+	createWatermark()
 else
 	createUI("No Host Found")
 	return
@@ -464,7 +529,7 @@ task.spawn(function()
 					isFrozen = false
 					createUI("Auto-Fling: " .. target.DisplayName)
 					runFling(target)
-					task.wait(6) -- Wait for fling to complete + cooldown
+					task.wait(6)
 					break
 				end
 			end
@@ -693,10 +758,12 @@ local function handleCommand(player, msg)
 		createUI("Removed from Opp List:\n" .. target.DisplayName)
 
 	elseif cmd == ".fling" then
+		-- FIX: Force stop any stuck fling state
 		if isFlinging then
-			createUI("Fling: Already flinging!")
-			return
+			isFlinging = false
+			task.wait(0.5)
 		end
+		
 		local query = table.concat(args, " ", 2)
 		if query == "" then
 			createUI("Usage: .fling <name>")
@@ -788,8 +855,12 @@ local function handleCommand(player, msg)
 		end
 
 	elseif cmd == ".cmd" then
-		sendChatMessage(".summon .stop .orbit [n] .tp .wl [user] .unwl [user] .opp [user] .fling [user] .spin [n] .invis .vis .status .rj .re")
+		sendChatMessage(".summon .stop .orbit [n] .tp .wl [user] .unwl [user] .opp [user] .fling [user] .spin [n] .invis .vis .status .rj .re .script")
 		createUI("Command list sent to chat")
+
+	elseif cmd == ".script" then
+		sendChatMessage("I am using Glonk's FlingBot made by glonk")
+		createUI("Script message sent!")
 
 	elseif cmd == ".rj" then
 		createUI("Rejoining server...")
