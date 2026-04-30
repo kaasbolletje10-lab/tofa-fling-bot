@@ -855,11 +855,11 @@ local function handleCommand(player, msg)
 		end
 
 	elseif cmd == ".cmd" then
-		sendChatMessage(".summon .stop .orbit [n] .tp .wl [user] .unwl [user] .opp [user] .fling [user] .spin [n] .invis .vis .status .rj .re .script")
+		sendChatMessage(".summon .stop .orbit [n] .tp .wl [user] .unwl [user] .opp [user] .fling [user] .spin [n]  .status .rj .re[broken rn] .script")
 		createUI("Command list sent to chat")
 
 	elseif cmd == ".script" then
-		sendChatMessage("I am using Glonk's FlingBot made by glonk")
+		sendChatMessage("I am using Glonk's FlingBot made by glonk and a tiny bit by xDa")
 		createUI("Script message sent!")
 
 	elseif cmd == ".rj" then
